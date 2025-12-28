@@ -1,5 +1,5 @@
 {
-  "name": "core",
+  "name": "lee-tr-cli",
   "version": "1.0.0",
   "main": "index.js",
   "files": [ "dist" ],
