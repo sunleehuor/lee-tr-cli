@@ -1,7 +1,7 @@
 import { getValueOfCommand } from "../common/helper/command";
 import { getSampleFile, readJsonFile, readTextFile, writeFile, writeTempFile } from "../common/helper/file";
 import path from "path";
-import { logger, loggerError } from "../common/helper/logger";
+import { logger, loggerError, loggerWarning } from "../common/helper/logger";
 import { IConfig } from "../common/data/types/config";
 import clipboardy from "clipboardy";
 import { getTranslate } from "../common/helper/translate";
@@ -100,16 +100,17 @@ export async function startTApp() {
                 to: locale.lang
             });
 
-            if( !!!Object.keys(translate).find(d => d.toLocaleLowerCase() == keys.toLocaleLowerCase()) ) {
+            if( !Object.keys(translate?.[locale.file] || {}).filter(d => d.toLocaleLowerCase() == keys.toLocaleLowerCase())?.length ) {
                 translate[locale.file] = {
                     ...translate[locale.file],
                     [keys]: valueTran
                 }
+            } else {
+                loggerWarning(`This ${keys} keys is existing in ${locale.file}`);
             }
-
-
         } catch(e: any) {
-
+            loggerError(`Translate failed: ${e?.message}`);
+            process.exit(0);
         }
     }
 
@@ -122,4 +123,7 @@ export async function startTApp() {
             process.exit(0);
         }
     }
+
+    // Unmounted
+    logger("Translate completed");
 }
