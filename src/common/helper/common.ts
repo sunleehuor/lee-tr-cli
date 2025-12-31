@@ -13,3 +13,7 @@ export function removeSpaceAndSpacialChar(text: string) {
 }
 
 export const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+export function removeQuotesFromJsonKeys(jsonString: string) {
+  return jsonString.replace(/"([a-zA-Z0-9_]+)"\s*:/g, '$1:');
+}
