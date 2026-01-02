@@ -1,4 +1,9 @@
+import os from "os";
+import path from "path";
 import constant from "../data/constant";
+import { IConfig } from "../data/types/config";
+import { writeFile } from "./file";
+import { loggerWarning } from "./logger";
 
 export function removeSpaceAndSpacialChar(text: string) {
   text = text.replace(/\{.*?\}/g, "");
@@ -17,3 +22,26 @@ export const wait = (ms: number) => new Promise<void>(resolve => setTimeout(reso
 export function removeQuotesFromJsonKeys(jsonString: string) {
   return jsonString.replace(/"([a-zA-Z0-9_]+)"\s*:/g, '$1:');
 }
+
+export   async function cleanup(config: IConfig, reason: string) {
+    const tmpPath = os.tmpdir();
+    const prefix = constant.PREFIX;
+
+    try {
+      for(const locale of config.locales) {
+        let text = undefined;
+        try{
+          text = (await import(path.join( tmpPath, prefix + "-" + locale.lang + '.json' )))?.default;
+        }catch {}
+        
+        if(text) {
+          const textJson = typeof text ? text : {};
+          await writeFile( config.type, path.join( process.cwd(), config.localePath, locale.file ),  textJson);
+          // await deleteFile( path.join( tmpPath, prefix + "-" + locale.lang + '.json' ) );
+        }
+      }
+      loggerWarning(`Cleanup reason:\n${reason}`);
+    } catch (err) {
+      loggerWarning(`Cleanup failed:\n${String(err)}`);
+    }
+  }

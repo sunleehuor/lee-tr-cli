@@ -21,12 +21,12 @@ export function readJsonFile(path: string) {
 
 export async function readTextFile(path: string) {
     try{
-        const res = await fs.readFileSync(path, {
+        const res = await fs.promises.readFile(path, {
             encoding: "utf8"
         });
         return res;
     }catch (e){
-        return undefined;
+        throw e;
     }
 }
 
