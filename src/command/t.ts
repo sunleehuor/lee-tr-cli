@@ -6,7 +6,7 @@ import { IConfig } from "../common/data/types/config";
 import clipboardy from "clipboardy";
 import { getTranslate } from "../common/helper/translate";
 import constant from "../common/data/constant";
-import { removeSpaceAndSpacialChar, wait } from "../common/helper/common";
+import { cleanup, removeSpaceAndSpacialChar, wait } from "../common/helper/common";
 import os from "os";
 
 export async function startTApp() {
@@ -44,8 +44,6 @@ export async function startTApp() {
     const configJson = readJsonFile(filePath) as IConfig;
     if( !configJson ) return;
 
-    const isJson = configJson?.type == "json";
-
     let translate: Record<any, any> = {};
     let tempTranslate: Record<any, any> = {};
     for( const locale of configJson.locales ) {
@@ -53,21 +51,17 @@ export async function startTApp() {
             const filePath = path.join( process.cwd(), configJson?.localePath, locale?.file );
             let text = undefined;
             try{
-                text = isJson 
-                                ? 
-                                    (await import( filePath ))?.default
-                                : 
-                                    (await import( filePath ))?.default
+                text = (await import( filePath ))?.default
             }catch {}
             if(!text || !Object.keys(text)?.length ) {
                 const sampleText = await getSampleFile(configJson?.type);
                 translate[locale?.file] = sampleText;
                 tempTranslate[locale?.file] = sampleText;
-                await writeTempFile( path.join(os.tmpdir(), constant.PREFIX + "-" + locale.lang), JSON.stringify(sampleText || "{}"));
+                await writeTempFile( path.join(os.tmpdir(), constant.PREFIX + "-" + locale.lang + '.json'), sampleText);
             } else {
                 translate[locale?.file] = text;
                 tempTranslate[locale?.file] = text;
-                await writeTempFile( path.join(os.tmpdir(), constant.PREFIX + "-" + locale.lang), JSON.stringify(text || "{}"));
+                await writeTempFile( path.join(os.tmpdir(), constant.PREFIX + "-" + locale.lang) + '.json', text);
             }
         }catch(e: any) {
             loggerError(e?.message || "Something wen wrong");
@@ -118,11 +112,12 @@ export async function startTApp() {
         try{
             const writePath = path.join( process.cwd(), configJson.localePath, tran[0]);
             await writeFile( configJson.type, writePath, tran[1]);
-        }catch(e: any) {
+            }catch(e: any) {
             loggerError(e?.message);
+            await cleanup(configJson, "ROLLBACK");
             process.exit(0);
-        }
     }
+}
 
     // Unmounted
     logger("Translate completed");
