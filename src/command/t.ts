@@ -3,14 +3,15 @@ import { getSampleFile, readJsonFile, readTextFile, writeFile, writeTempFile } f
 import path from "path";
 import { logger, loggerError, loggerWarning } from "../common/helper/logger";
 import { IConfig } from "../common/data/types/config";
-import clipboardy from "clipboardy";
 import { getTranslate } from "../common/helper/translate";
 import constant from "../common/data/constant";
 import { cleanup, removeSpaceAndSpacialChar, wait } from "../common/helper/common";
 import os from "os";
+import { getClipBoardy } from "../common/helper/inject";
 
 export async function startTApp() {
     // Global var
+    const clipboardy = await getClipBoardy();
     const LIMIT_OF_TRANSLATE_KEYS = constant.LIMIT_OF_TRANSLATE_KEYS;
     const filePath = getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH) || path.resolve(process.cwd(), constant.DEFAULT_CONFIG_PATH);
     const defaultKeys = process.argv?.[3];
