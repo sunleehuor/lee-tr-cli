@@ -4,6 +4,10 @@
   "homepage": "https://github.com/sunleehuor/lee-tr-demo",
   "main": "index.js",
   "files": [ "dist" ],
+   "repository": {
+    "type": "git",
+    "url": "https://github.com/sunleehuor/lee-tr-cli"
+  },
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
@@ -13,8 +17,8 @@
     "lee-tr": "./dist/bin/lee-tr.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Lee",
+  "license": "MIT",
   "description": "",
   "devDependencies": {
     "ts-node": "^10.9.2",
