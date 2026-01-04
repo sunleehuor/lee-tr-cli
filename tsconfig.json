@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",                // Modern JS syntax
-    "module": "nodenext",              // Node-friendly module system
+    "module": "commonjs",              // Node-friendly module system
     "outDir": "dist",                  // Compiled JS output
     "rootDir": "src",                  // TypeScript source files
     "strict": true,                     // Enable strict type-checking
