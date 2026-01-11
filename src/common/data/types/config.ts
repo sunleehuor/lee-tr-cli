@@ -1,13 +1,21 @@
-import { LanguageCode } from "./lang";
+import { LanguageCode } from './lang';
 
-export type TConfigType = "module" | "json" | "commonjs";
+export type TConfigType = 'module' | 'json' | 'commonjs';
 
 export interface IConfig {
-  type: TConfigType,
-  defaultLocale: string,
+  type: TConfigType;
+  defaultLocale: string;
   locales: Array<{
-    lang: LanguageCode,
-    file: string
-  }>,
-  localePath: string
+    lang: LanguageCode;
+    file: string;
+  }>;
+  localePath: string;
+}
+
+export interface IPackageJsonConfig {
+  configPath: string;
+}
+
+export interface IPackageJson {
+  'lee-tr': IPackageJsonConfig;
 }
