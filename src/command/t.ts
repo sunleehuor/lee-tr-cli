@@ -1,23 +1,17 @@
 import os from 'os';
 import path from 'path';
 import constant from '../common/data/constant';
-import { IConfig, IPackageJson } from '../common/data/types/config';
-import { getValueOfCommand } from '../common/helper/command';
+import { IConfig } from '../common/data/types/config';
 import { cleanup, removeSpaceAndSpacialChar } from '../common/helper/common';
-import { getConfigFromPackageJson, getSampleFile, readJsonFile, writeFile, writeTempFile } from '../common/helper/file';
+import { getSampleFile, writeFile, writeTempFile } from '../common/helper/file';
 import { getClipBoardy } from '../common/helper/inject';
 import { logger, loggerError, loggerWarning } from '../common/helper/logger';
 import { getTranslate } from '../common/helper/translate';
 
-export async function startTApp() {
+export async function startTApp(configJson: IConfig) {
   // Global var
-  let packageJson = getConfigFromPackageJson()?.configPath || '';
   const clipboardy = await getClipBoardy();
   const LIMIT_OF_TRANSLATE_KEYS = constant.LIMIT_OF_TRANSLATE_KEYS;
-  const filePath =
-    getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH) ||
-    packageJson ||
-    path.resolve(process.cwd(), constant.DEFAULT_CONFIG_PATH);
   const defaultKeys = process.argv?.[3];
   let keys = '';
 
@@ -46,9 +40,6 @@ export async function startTApp() {
   }
 
   // Logic
-  const configJson = readJsonFile(filePath) as IConfig;
-  if (!configJson) return;
-
   let translate: Record<any, any> = {};
   let tempTranslate: Record<any, any> = {};
   for (const locale of configJson.locales) {

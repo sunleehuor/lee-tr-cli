@@ -10,6 +10,7 @@ import { getValueOfCommand } from '../common/helper/command';
 import { cleanup } from '../common/helper/common';
 import { getConfigFromPackageJson, isFileExisting, readJsonFile } from '../common/helper/file';
 import { loggerError } from '../common/helper/logger';
+import { startAddApp } from '../command/add';
 
 function unMounted() {
   /**
@@ -122,9 +123,10 @@ async function bootstrap() {
   // Command switch case
   switch (cmd) {
     case 't':
-      startTApp();
+      startTApp(configJson);
       break;
     case 'add':
+      startAddApp(configJson);
       break;
     default:
       loggerError('Command not existing. please try --help for more detail');
