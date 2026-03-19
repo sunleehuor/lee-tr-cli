@@ -8,18 +8,14 @@ import { IConfig, IPackageJson } from '../common/data/types/config';
 import { LANGUAGE_CODES, LanguageCode } from '../common/data/types/lang';
 import { getValueOfCommand } from '../common/helper/command';
 import { cleanup } from '../common/helper/common';
-import { isFileExisting, readJsonFile } from '../common/helper/file';
+import { getConfigFromPackageJson, isFileExisting, readJsonFile } from '../common/helper/file';
 import { loggerError } from '../common/helper/logger';
 
 function unMounted() {
   /**
    * Global validation
    */
-  let packageJson = '';
-  try {
-    const json = readJsonFile(path.resolve(process.cwd(), 'package.json')) as IPackageJson;
-    packageJson = json?.['lee-tr']?.configPath;
-  } catch {}
+  let packageJson = getConfigFromPackageJson()?.configPath || '';
   const filePath =
     getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH) ||
     packageJson ||
@@ -56,11 +52,7 @@ async function bootstrap() {
   /**
    * Global validation
    */
-  let packageJson = '';
-  try {
-    const json = readJsonFile(path.resolve(process.cwd(), 'package.json')) as IPackageJson;
-    packageJson = json?.['lee-tr']?.configPath;
-  } catch {}
+  let packageJson = getConfigFromPackageJson()?.configPath || '';
   const filePath =
     getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH) ||
     packageJson ||
