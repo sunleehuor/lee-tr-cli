@@ -4,18 +4,14 @@ import constant from '../common/data/constant';
 import { IConfig, IPackageJson } from '../common/data/types/config';
 import { getValueOfCommand } from '../common/helper/command';
 import { cleanup, removeSpaceAndSpacialChar } from '../common/helper/common';
-import { getSampleFile, readJsonFile, writeFile, writeTempFile } from '../common/helper/file';
+import { getConfigFromPackageJson, getSampleFile, readJsonFile, writeFile, writeTempFile } from '../common/helper/file';
 import { getClipBoardy } from '../common/helper/inject';
 import { logger, loggerError, loggerWarning } from '../common/helper/logger';
 import { getTranslate } from '../common/helper/translate';
 
 export async function startTApp() {
   // Global var
-  let packageJson = '';
-  try {
-    const json = readJsonFile(path.resolve(process.cwd(), 'package.json')) as IPackageJson;
-    packageJson = json?.['lee-tr']?.configPath;
-  } catch {}
+  let packageJson = getConfigFromPackageJson()?.configPath || '';
   const clipboardy = await getClipBoardy();
   const LIMIT_OF_TRANSLATE_KEYS = constant.LIMIT_OF_TRANSLATE_KEYS;
   const filePath =
