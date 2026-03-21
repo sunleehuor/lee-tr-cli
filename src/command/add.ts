@@ -125,7 +125,7 @@ export async function startAddApp(configJson: IConfig, configJsonPath: string) {
     await fs.writeFileSync(configJsonPath, JSON.stringify(newConfig, null, constant.FORMAT.SPACE));
     logger('Added Successfully');
   } catch (e) {
-    loggerError(`Modified config file failed, you can modify manually\n
+    loggerError(`Modified config file failed, you can modify manually on config.json\n
       {
         locales: [
           ${JSON.stringify(newConfigLocale, null, 2)}
