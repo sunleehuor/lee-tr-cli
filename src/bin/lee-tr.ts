@@ -9,7 +9,8 @@ import { LANGUAGE_CODES, LanguageCode } from '../common/data/types/lang';
 import { getValueOfCommand } from '../common/helper/command';
 import { cleanup } from '../common/helper/common';
 import { getConfigFromPackageJson, isFileExisting, readJsonFile } from '../common/helper/file';
-import { loggerError } from '../common/helper/logger';
+import { logger, loggerError } from '../common/helper/logger';
+import { startAddApp } from '../command/add';
 
 function unMounted() {
   /**
@@ -47,6 +48,7 @@ function unMounted() {
 
 async function bootstrap() {
   // Global var
+  const start = process.hrtime();
   const cmd = process.argv?.[2];
 
   /**
@@ -122,14 +124,19 @@ async function bootstrap() {
   // Command switch case
   switch (cmd) {
     case 't':
-      startTApp();
+      await startTApp(configJson);
       break;
     case 'add':
+      await startAddApp(configJson, filePath);
       break;
     default:
       loggerError('Command not existing. please try --help for more detail');
       break;
   }
+
+  // Console request time
+  const diff = process.hrtime(start);
+  logger(`Execution time: ${diff[0]}s ${diff[1] / 1e6}ms`);
 }
 
 bootstrap();
