@@ -101,3 +101,16 @@ export function getConfigFromPackageJson(): IPackageJsonConfig {
     return {} as IPackageJsonConfig;
   }
 }
+
+export function getLocaleExtension(type: TConfigType = 'json'): string {
+  switch (type) {
+    case 'json':
+      return 'json';
+    case 'commonjs':
+      return 'js';
+    case 'module':
+      return 'ts';
+    default:
+      return 'json';
+  }
+}

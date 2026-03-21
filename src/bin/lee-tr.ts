@@ -127,7 +127,7 @@ async function bootstrap() {
       await startTApp(configJson);
       break;
     case 'add':
-      await startAddApp(configJson);
+      await startAddApp(configJson, filePath);
       break;
     default:
       loggerError('Command not existing. please try --help for more detail');
