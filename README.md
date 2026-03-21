@@ -3,7 +3,7 @@
 > A CLI tool to help translate keys **one by one automatically** into multiple languages  
 > Supports **JSON**, **ES module**, and **CommonJS** formats.
 
-`lee-tr-cli` is designed for developers who manage multiple language files  
+`lee-tr-cli` is built on top `bing-translate-api` and is designed to help developers manage multiple language files efficiently. 
 (e.g. `en`, `km`, `jp`, …) and want to translate once and apply everywhere.
 
 > *Requirement `Node Js` (`^20.*`)
@@ -75,7 +75,7 @@ project/
 ```
 
 ## 5. Usage and work flow
-- options: `t, ...`
+- options: `t, add, ...`
 ```bash
 lee-tr [options] [keys]
 ```
