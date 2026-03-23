@@ -75,7 +75,7 @@ project/
 ```
 
 ## 5. Usage and work flow
-- options: `t, add, ...`
+- options: `t, add, check, ...`
 ```bash
 lee-tr [options] [keys]
 ```
