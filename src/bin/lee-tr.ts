@@ -11,6 +11,7 @@ import { cleanup } from '../common/helper/common';
 import { getConfigFromPackageJson, isFileExisting, readJsonFile } from '../common/helper/file';
 import { logger, loggerError } from '../common/helper/logger';
 import { startAddApp } from '../command/add';
+import { startCheckApp } from '../command/check';
 
 function unMounted() {
   /**
@@ -128,6 +129,9 @@ async function bootstrap() {
       break;
     case 'add':
       await startAddApp(configJson, filePath);
+      break;
+    case 'check':
+      await startCheckApp(configJson);
       break;
     default:
       loggerError('Command not existing. please try --help for more detail');
