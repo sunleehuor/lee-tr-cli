@@ -1,0 +1,1 @@
+export type TCheckStage = "Check missing file"
