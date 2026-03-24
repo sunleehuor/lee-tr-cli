@@ -9,7 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,              // Skip type checks of node_modules
     "resolveJsonModule": true,         // Allow importing JSON files
-    "moduleResolution": "node",        // Node-style module resolution
     "allowJs": false,                  // Only allow TS
     "noEmitOnError": true,             // Prevent emitting JS if errors
     "types": ["node"],                 // Include Node.js types
