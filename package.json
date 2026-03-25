@@ -3,8 +3,10 @@
   "version": "1.0.9",
   "homepage": "https://github.com/sunleehuor/lee-tr-demo",
   "main": "index.js",
-  "files": [ "dist" ],
-   "repository": {
+  "files": [
+    "dist"
+  ],
+  "repository": {
     "type": "git",
     "url": "https://github.com/sunleehuor/lee-tr-cli"
   },
@@ -16,10 +18,18 @@
   "bin": {
     "lee-tr": "./dist/bin/lee-tr.js"
   },
-  "keywords": [],
+  "description": "A CLI to translate and sync locale files",
+  "keywords": [
+    "i18n",
+    "translation",
+    "locale",
+    "typescript",
+    "multi-language",
+    "Node.js",
+    "CLI"
+  ],
   "author": "Lee",
   "license": "MIT",
-  "description": "",
   "devDependencies": {
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
