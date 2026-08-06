@@ -2,7 +2,14 @@ import os from 'os';
 import path from 'path';
 import constant from '../common/data/constant';
 import { IConfig } from '../common/data/types/config';
-import { cleanup, removeSpaceAndSpacialChar } from '../common/helper/common';
+import {
+  cleanup,
+  deepMerge,
+  hasKeyOrObject,
+  objectKey,
+  removeSpaceAndSpacialChar,
+  textToNestedObject,
+} from '../common/helper/common';
 import { getSampleFile, writeFile, writeTempFile } from '../common/helper/file';
 import { getClipBoardy } from '../common/helper/inject';
 import { logger, loggerError, loggerWarning } from '../common/helper/logger';
@@ -17,7 +24,8 @@ export async function startTApp(configJson: IConfig) {
 
   try {
     logger('Checking translate keys...');
-    keys = defaultKeys?.trim() || (await clipboardy.read());
+    const cleanKeys = removeSpaceAndSpacialChar(defaultKeys?.trim() ?? '') || objectKey(await clipboardy.read());
+    keys = cleanKeys
     logger('Checked translate keys');
   } catch (e: any) {
     loggerError('Translate keys must be valid.' + ' ' + e?.message);
@@ -30,7 +38,7 @@ export async function startTApp(configJson: IConfig) {
     });
     const afterSliceKey = defaultKeys ? afterTranslateKey : afterTranslateKey?.slice(0, LIMIT_OF_TRANSLATE_KEYS);
     if (afterSliceKey) {
-      const value = removeSpaceAndSpacialChar(afterSliceKey);
+      const value = afterSliceKey;
       keys = value;
       logger(`Your translate keys (${value})`);
     }
@@ -90,14 +98,10 @@ export async function startTApp(configJson: IConfig) {
         to: locale.lang,
       });
 
-      if (
-        !Object.keys(translate?.[locale.file] || {}).filter((d) => d.toLocaleLowerCase() == keys.toLocaleLowerCase())
-          ?.length
-      ) {
-        translate[locale.file] = {
-          ...translate[locale.file],
-          [keys]: valueTran,
-        };
+      const translateKeysValue = textToNestedObject(keys, valueTran);
+      const isExisting = hasKeyOrObject(translate?.[locale.file] || {}, translateKeysValue);
+      if (!isExisting) {
+        translate[locale.file] = deepMerge(translate[locale.file], translateKeysValue);
       } else {
         loggerWarning(`This ${keys} keys is existing in ${locale.file}`);
       }
