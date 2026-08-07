@@ -6,27 +6,35 @@ import path from 'path';
 import fs from 'fs';
 import constant from '../common/data/constant';
 import { getTranslate } from '../common/helper/translate';
+import { chunkArray, flattenObject, unFlattenObject } from '../common/helper/add';
 
-async function GetTranslate(translates: [string, string][], index: number, locale: LanguageCode) {
-  let result: { [index]: Record<string, string> } = {};
-  for (const item of translates) {
-    try {
-      const translateText = await getTranslate({
-        text: item?.[1],
-        to: locale,
-      });
-      if (translateText) {
-        result[index] = {
-          ...result[index],
-          [item[0]]: translateText,
-        };
+async function GetTranslate(data: Record<string, any>, locale: LanguageCode): Promise<Record<string, any>> {
+  async function translateObject(obj: any): Promise<any> {
+    const result: any = Array.isArray(obj) ? [] : {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string') {
+        try {
+          const translated = await getTranslate({
+            text: value,
+            to: locale,
+          });
+
+          result[key] = translated ?? value;
+        } catch (e: any) {
+          loggerError(`Translate failed: ${e?.message}`);
+          process.exit(1);
+        }
+      } else if (value && typeof value === 'object') {
+        result[key] = await translateObject(value);
+      } else {
+        // Preserve numbers, booleans, null, etc.
+        result[key] = value;
       }
-    } catch (e: any) {
-      loggerError(`Translate failed: ${e?.message}`);
-      process.exit(1);
     }
+    return result;
   }
-  return result;
+  return translateObject(data);
 }
 
 export async function startAddApp(configJson: IConfig, configJsonPath: string) {
@@ -69,22 +77,33 @@ export async function startAddApp(configJson: IConfig, configJsonPath: string) {
   // Translate keys
   const limit = constant.PAGINATION.LIMIT;
   const concurrentLimit = constant.PAGINATION.CONCURRENT;
-  const pagination = Math.ceil(Object.entries(defaultTranslate).length / limit);
   let translateNewLang: Record<string, string> = {};
 
-  const concurrentTranslate = Array.from({ length: pagination }).map((_, index) => {
-    return GetTranslate(
-      Object.entries(defaultTranslate).slice(limit * index, limit * (index == 0 ? 1 : index + 1)),
-      index,
-      locale
-    );
-  });
+  const flattedObjectValue = flattenObject(defaultTranslate);
+  const pages = chunkArray(flattedObjectValue, constant.PAGINATION.LIMIT).filter((d) => d?.length);
+
+  const concurrentTranslate = Array.from({ length: pages.length })
+    .map((_, index) => {
+      const data = pages
+        .slice(limit * index, limit * (index == 0 ? 1 : index + 1))
+        .map((d) => d)
+        .filter((d) => d.length);
+      return data;
+    })
+    .filter((data) => data && data.length)
+    .map((data) => {
+      return GetTranslate(unFlattenObject(data), locale);
+    });
 
   const results = [];
-  for (let i = 0; i < concurrentTranslate.length; i += concurrentLimit) {
-    const batch = concurrentTranslate.slice(i, i + concurrentLimit);
-    const res = await Promise.all(batch);
-    results.push(...res);
+  try {
+    for (let i = 0; i < concurrentTranslate.length; i += concurrentLimit) {
+      const batch = concurrentTranslate.slice(i, i + concurrentLimit);
+      const res = await Promise.all(batch);
+      results.push(...res);
+    }
+  } catch (e) {
+    console.log(e);
   }
 
   results
@@ -93,10 +112,10 @@ export async function startAddApp(configJson: IConfig, configJsonPath: string) {
       const keyB = Number(Object.keys(b)[0]);
       return keyA - keyB;
     })
-    .forEach((item, index) => {
+    .forEach((item) => {
       translateNewLang = {
         ...translateNewLang,
-        ...(item?.[index] || {}),
+        ...(item || {}),
       };
     });
 
