@@ -130,3 +130,7 @@ export function deepMerge(target: Record<string, any>, source: Record<string, an
 
   return target;
 }
+
+export function isEnglish(text: string): boolean {
+  return /^[A-Za-z0-9\s.,!?'"():;@#$%^&*+=/_\-`~[\]{}<>|\\]*$/.test(text);
+}

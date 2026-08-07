@@ -6,6 +6,7 @@ import {
   cleanup,
   deepMerge,
   hasKeyOrObject,
+  isEnglish,
   objectKey,
   removeSpaceAndSpacialChar,
   textToNestedObject,
@@ -33,7 +34,7 @@ export async function startTApp(configJson: IConfig) {
   }
 
   try {
-    const afterTranslateKey = await getTranslate({
+    const afterTranslateKey = isEnglish(keys) ? keys : await getTranslate({
       text: keys,
     });
     const afterSliceKey = defaultKeys ? afterTranslateKey : afterTranslateKey?.slice(0, LIMIT_OF_TRANSLATE_KEYS);
