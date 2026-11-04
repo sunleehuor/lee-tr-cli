@@ -1,138 +1,89 @@
+import fs from 'fs';
+import path from 'path';
+import constant from '../common/data/constant';
 import { IConfig } from '../common/data/types/config';
 import { LANGUAGE_CODES, LanguageCode } from '../common/data/types/lang';
+import { chunkArray, flattenObject, unFlattenObject } from '../common/helper/add';
+import { deepMerge } from '../common/helper/common';
 import { getLocaleExtension, isFileExisting, writeFile } from '../common/helper/file';
 import { logger, loggerError } from '../common/helper/logger';
-import path from 'path';
-import fs from 'fs';
-import constant from '../common/data/constant';
-import { getTranslate } from '../common/helper/translate';
-import { chunkArray, flattenObject, unFlattenObject } from '../common/helper/add';
+import { translateNestedObject } from '../common/helper/translate';
 
-async function GetTranslate(data: Record<string, any>, locale: LanguageCode): Promise<Record<string, any>> {
-  async function translateObject(obj: any): Promise<any> {
-    const result: any = Array.isArray(obj) ? [] : {};
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string') {
-        try {
-          const translated = await getTranslate({
-            text: value,
-            to: locale,
-          });
-
-          result[key] = translated ?? value;
-        } catch (e: any) {
-          loggerError(`Translate failed: ${e?.message}`);
-          process.exit(1);
-        }
-      } else if (value && typeof value === 'object') {
-        result[key] = await translateObject(value);
-      } else {
-        // Preserve numbers, booleans, null, etc.
-        result[key] = value;
-      }
-    }
-    return result;
-  }
-  return translateObject(data);
-}
-
-export async function startAddApp(configJson: IConfig, configJsonPath: string) {
+export async function startAddApp(configJson: IConfig, configJsonPath: string): Promise<void> {
   const locale = process.argv?.[3] as LanguageCode;
   const defaultLangPath = path.resolve(process.cwd(), configJson.localePath, configJson?.locales?.[0]?.file);
   const extension = getLocaleExtension(configJson.type);
 
   // Validation
-  if (!locale || !LANGUAGE_CODES.find((d) => d == locale)) {
-    loggerError(`Adding new language require locale or need exist locale keys`);
-    return;
+  if (!locale || !LANGUAGE_CODES.includes(locale)) {
+    loggerError(`Adding a new language requires a valid locale code (e.g. "km", "ja").`);
+    process.exit(1);
   }
 
-  if (await isFileExisting(path.resolve(process.cwd(), configJson.localePath, locale + '.' + extension))) {
-    loggerError(`The ${locale} language is already exist on locales`);
-    return;
+  const newLocaleFilePath = path.resolve(process.cwd(), configJson.localePath, `${locale}.${extension}`);
+  if (await isFileExisting(newLocaleFilePath)) {
+    loggerError(`Locale file "${locale}.${extension}" already exists in "${configJson.localePath}".`);
+    process.exit(1);
   }
 
-  if (
-    !!configJson.locales.find(
-      (d) => d.lang.toLocaleLowerCase() == locale.toLocaleLowerCase() || d.file == locale + '.' + extension
-    )
-  ) {
-    loggerError(`This locale keys already exist`);
-    return;
+  const isAlreadyInConfig = configJson.locales.some(
+    (d) => d.lang.toLowerCase() === locale.toLowerCase() || d.file === `${locale}.${extension}`
+  );
+  if (isAlreadyInConfig) {
+    loggerError(`Locale "${locale}" is already defined in configuration.`);
+    process.exit(1);
   }
 
-  // Read default value
-  let defaultTranslate: Record<string, string> = {};
+  // Read default locale values
+  let defaultTranslate: Record<string, any> = {};
   try {
     const res = (await import(defaultLangPath))?.default;
-    defaultTranslate = res;
+    defaultTranslate = res || {};
   } catch (e: any) {
-    loggerError(`Import default value failed: ${e?.message}`);
-    return;
+    loggerError(`Failed to import reference locale from "${defaultLangPath}": ${e?.message}`);
+    process.exit(1);
   }
 
-  logger('Please waiting value is translating may take a bit long...');
+  logger('Translating keys, this may take a moment...');
 
-  // Translate keys
-  const limit = constant.PAGINATION.LIMIT;
+  // Flatten and chunk for batch translation
   const concurrentLimit = constant.PAGINATION.CONCURRENT;
-  let translateNewLang: Record<string, string> = {};
-
   const flattedObjectValue = flattenObject(defaultTranslate);
   const pages = chunkArray(flattedObjectValue, constant.PAGINATION.LIMIT).filter((d) => d?.length);
 
-  const concurrentTranslate = Array.from({ length: pages.length })
-    .map((_, index) => {
-      const data = pages
-        .slice(limit * index, limit * (index == 0 ? 1 : index + 1))
-        .map((d) => d)
-        .filter((d) => d.length);
-      return data;
-    })
-    .filter((data) => data && data.length)
-    .map((data) => {
-      return GetTranslate(unFlattenObject(data), locale);
-    });
+  const concurrentTranslate = pages.map((pageChunk) => {
+    return translateNestedObject(unFlattenObject([pageChunk]), locale);
+  });
 
-  const results = [];
+  const results: Record<string, any>[] = [];
   try {
     for (let i = 0; i < concurrentTranslate.length; i += concurrentLimit) {
       const batch = concurrentTranslate.slice(i, i + concurrentLimit);
       const res = await Promise.all(batch);
       results.push(...res);
     }
-  } catch (e) {
-    console.log(e);
-  }
-
-  results
-    .sort((a, b) => {
-      const keyA = Number(Object.keys(a)[0]);
-      const keyB = Number(Object.keys(b)[0]);
-      return keyA - keyB;
-    })
-    .forEach((item) => {
-      translateNewLang = {
-        ...translateNewLang,
-        ...(item || {}),
-      };
-    });
-
-  // Modified config json file
-  try {
-    await writeFile(
-      configJson.type,
-      path.resolve(process.cwd(), configJson.localePath, locale + '.' + extension),
-      translateNewLang
-    );
   } catch (e: any) {
-    loggerError(`Write file failed: ${e?.message}`);
-    return;
+    loggerError(`Batch translation failed: ${e?.message}`);
+    process.exit(1);
   }
 
+  // Deep merge all translated chunks
+  const translateNewLang: Record<string, any> = {};
+  for (const item of results) {
+    deepMerge(translateNewLang, item || {});
+  }
+
+  // Write new locale file
+  try {
+    await writeFile(configJson.type, newLocaleFilePath, translateNewLang);
+  } catch (e: any) {
+    loggerError(`Failed to write new locale file: ${e?.message}`);
+    process.exit(1);
+  }
+
+  // Update configuration JSON file
   const newConfigLocale = {
-    file: locale + '.' + extension,
+    file: `${locale}.${extension}`,
     lang: locale,
   };
 
@@ -141,15 +92,14 @@ export async function startAddApp(configJson: IConfig, configJsonPath: string) {
       ...configJson,
       locales: [...configJson.locales, newConfigLocale],
     };
-    await fs.writeFileSync(configJsonPath, JSON.stringify(newConfig, null, constant.FORMAT.SPACE));
-    logger('Added Successfully');
+    await fs.promises.writeFile(configJsonPath, JSON.stringify(newConfig, null, constant.FORMAT.SPACE), 'utf8');
+    logger(`Locale "${locale}" added successfully!`);
   } catch (e) {
-    loggerError(`Modified config file failed, you can modify manually on config.json\n
-      {
-        locales: [
-          ${JSON.stringify(newConfigLocale, null, 2)}
-        ]
-      }
+    loggerError(`Failed to update config file automatically. Please add manually to ${configJsonPath}:
+      "locales": [
+        ...
+        ${JSON.stringify(newConfigLocale, null, 2)}
+      ]
     `);
   }
 }

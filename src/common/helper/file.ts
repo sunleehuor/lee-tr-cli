@@ -1,105 +1,113 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { loggerError } from './logger';
 import sampleDefaultJson from '../data/sample/defaultJson.json';
 import sampleDefaultModule from '../data/sample/defaultModule';
+import sampleDefaultCommon from '../data/sample/defaultCommon';
 import { IPackageJson, IPackageJsonConfig, TConfigType } from '../data/types/config';
 import constant from '../data/constant';
-const sampleDefaultCommon = require('../data/sample/defaultCommon');
 
-export function readJsonFile(path: string) {
+export function readJsonFile(filePath: string): any {
   try {
-    const res = fs.readFileSync(path, {
+    const res = fs.readFileSync(filePath, {
       encoding: 'utf8',
     });
     return JSON.parse(res || '{}');
   } catch (e: any) {
-    loggerError(e?.message);
+    loggerError(`Failed to read JSON file at "${filePath}": ${e?.message}`);
     return undefined;
   }
 }
 
-export async function readTextFile(path: string) {
+export async function readTextFile(filePath: string): Promise<string> {
   try {
-    const res = await fs.promises.readFile(path, {
+    return await fs.promises.readFile(filePath, {
       encoding: 'utf8',
     });
-    return res;
-  } catch (e) {
-    throw e;
+  } catch (e: any) {
+    throw new Error(`Failed to read text file at "${filePath}": ${e?.message}`);
   }
 }
 
-export async function isFileExisting(path: string) {
+export async function isFileExisting(targetPath: string): Promise<boolean> {
   try {
-    const exist = await fs.existsSync(path);
-    return exist;
+    await fs.promises.access(targetPath);
+    return true;
   } catch {
     return false;
   }
 }
 
-export async function readSampleFile(type: TConfigType = 'json') {
+export function isFileExistingSync(targetPath: string): boolean {
+  return fs.existsSync(targetPath);
+}
+
+export async function getSampleFile(type: TConfigType = 'json'): Promise<any> {
   try {
-    if (type == 'json') return await readJsonFile(path.resolve(__dirname, '..', 'data', 'sample', 'default.json'));
-    if (['commonjs'].includes(type))
-      return await readTextFile(path.resolve(__dirname, '..', 'data', 'sample', 'default.js'));
-    if (['module'].includes(type))
-      return await readTextFile(path.resolve(__dirname, '..', 'data', 'sample', 'default.js'));
+    if (type === 'json') return sampleDefaultJson;
+    if (type === 'commonjs') return sampleDefaultCommon;
+    if (type === 'module') return sampleDefaultModule;
     return undefined;
   } catch {
     return undefined;
   }
 }
 
-export async function getSampleFile(type: TConfigType = 'json') {
+export async function writeFile(type: TConfigType = 'json', targetPath: string, text: Record<any, any>): Promise<void> {
   try {
-    if (type == 'json') return sampleDefaultJson;
-    if (['commonjs'].includes(type)) return sampleDefaultCommon;
-    if (['module'].includes(type)) return sampleDefaultModule;
-    return undefined;
-  } catch {
-    return undefined;
+    let content = '';
+    if (type === 'json') {
+      content = JSON.stringify(text || {}, null, constant.FORMAT.SPACE);
+    } else if (type === 'module') {
+      content = `export default ${JSON.stringify(text || {}, null, constant.FORMAT.SPACE)}`;
+    } else if (type === 'commonjs') {
+      content = `module.exports = ${JSON.stringify(text || {}, null, constant.FORMAT.SPACE)}`;
+    } else {
+      throw new Error(`Invalid write file type`);
+    }
+    await fs.promises.writeFile(targetPath, content, 'utf8');
+  } catch (e: any) {
+    throw new Error(`Write file failed for "${targetPath}": ${e?.message}`);
   }
 }
 
-export async function writeFile(type: TConfigType = 'json', path: string, text: Record<any, any>) {
+export async function writeTempFile(targetPath: string, text: any): Promise<void> {
   try {
-    if (type == 'json') await fs.writeFileSync(path, JSON.stringify(text || '{}', null, constant.FORMAT.SPACE));
-    else if (type == 'module')
-      await fs.writeFileSync(path, `export default ${JSON.stringify(text || '{}', null, constant.FORMAT.SPACE)}`);
-    else if (type == 'commonjs')
-      await fs.writeFileSync(path, `module.exports = ${JSON.stringify(text || '{}', null, constant.FORMAT.SPACE)}`);
-    else throw new Error('Invalid write file type');
+    await fs.promises.writeFile(targetPath, JSON.stringify(text || {}, null, constant.FORMAT.SPACE), 'utf8');
   } catch (e: any) {
-    throw new Error(e?.message);
+    throw new Error(`Write temporary file failed for "${targetPath}": ${e?.message}`);
   }
 }
 
-export async function writeTempFile(path: string, text: any) {
+export async function deleteFile(targetPath: string): Promise<void> {
   try {
-    return await fs.writeFileSync(path, `${JSON.stringify(text || '{}', null, constant.FORMAT.SPACE)}`);
+    await fs.promises.rm(targetPath, { force: true });
   } catch (e: any) {
-    throw new Error(e?.message);
-  }
-}
-
-export async function deleteFile(path: string) {
-  try {
-    console.log(path);
-    return await fs.rmSync(path, { force: true });
-  } catch (e: any) {
-    throw new Error(e?.message);
+    throw new Error(`Delete file failed for "${targetPath}": ${e?.message}`);
   }
 }
 
 export function getConfigFromPackageJson(): IPackageJsonConfig {
   try {
-    const json = readJsonFile(path.resolve(process.cwd(), 'package.json')) as IPackageJson;
+    const pkgPath = path.resolve(process.cwd(), 'package.json');
+    if (!fs.existsSync(pkgPath)) {
+      return {} as IPackageJsonConfig;
+    }
+    const json = readJsonFile(pkgPath) as IPackageJson;
     return json?.['lee-tr'] as IPackageJsonConfig;
   } catch {
     return {} as IPackageJsonConfig;
   }
+}
+
+export function resolveConfigPath(customPath?: string): string {
+  const packageJsonConfig = getConfigFromPackageJson()?.configPath;
+  return customPath || packageJsonConfig || path.resolve(process.cwd(), constant.DEFAULT_CONFIG_PATH);
+}
+
+export function getBackupFilePath(lang: string): string {
+  return path.join(os.tmpdir(), `${constant.PREFIX}-${lang}.json`);
 }
 
 export function getLocaleExtension(type: TConfigType = 'json'): string {

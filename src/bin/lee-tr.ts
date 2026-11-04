@@ -1,147 +1,94 @@
 #!/usr/bin/env node
 
-// Helper
 import path from 'path';
-import { startTApp } from '../command/t';
 import constant from '../common/data/constant';
-import { IConfig, IPackageJson } from '../common/data/types/config';
-import { LANGUAGE_CODES, LanguageCode } from '../common/data/types/lang';
+import { IConfig } from '../common/data/types/config';
 import { getValueOfCommand } from '../common/helper/command';
 import { cleanup } from '../common/helper/common';
-import { getConfigFromPackageJson, isFileExisting, readJsonFile } from '../common/helper/file';
+import { validateConfig } from '../common/helper/config';
+import { readJsonFile, resolveConfigPath } from '../common/helper/file';
 import { logger, loggerError } from '../common/helper/logger';
 import { startAddApp } from '../command/add';
 import { startCheckApp } from '../command/check';
+import { startInitApp } from '../command/init';
+import { startSyncApp } from '../command/sync';
+import { startTApp } from '../command/t';
 
-function unMounted() {
-  /**
-   * Global validation
-   */
-  let packageJson = getConfigFromPackageJson()?.configPath || '';
-  const filePath =
-    getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH) ||
-    packageJson ||
-    path.resolve(process.cwd(), constant.DEFAULT_CONFIG_PATH);
-
-  // Logic
-  const configJson = readJsonFile(filePath) as IConfig;
+function setupLifecycleHooks(configFilePath: string): void {
+  const configJson = readJsonFile(configFilePath) as IConfig;
   if (!configJson) return;
 
   process.on('SIGINT', async () => {
-    await cleanup(configJson, 'SIGINT');
+    await cleanup(configJson, 'SIGINT (user interrupt)');
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
-    await cleanup(configJson, 'SIGTERM');
+    await cleanup(configJson, 'SIGTERM (termination signal)');
     process.exit(0);
   });
 
-  process.on('exit', (code) => {
-    // cleanup(`exit:${code}`);
-  });
-
   process.on('uncaughtException', async (err) => {
-    console.error(err);
+    loggerError(`Uncaught exception: ${err.message}`);
     process.exit(1);
   });
 }
 
-async function bootstrap() {
-  // Global var
+async function bootstrap(): Promise<void> {
   const start = process.hrtime();
   const cmd = process.argv?.[2];
 
-  /**
-   * Global validation
-   */
-  let packageJson = getConfigFromPackageJson()?.configPath || '';
-  const filePath =
-    getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH) ||
-    packageJson ||
-    path.resolve(process.cwd(), constant.DEFAULT_CONFIG_PATH);
-
-  // Logic
-  const configJson = readJsonFile(filePath) as IConfig;
-
-  if (!configJson) return;
-
-  // package type
-  if (!configJson?.type) {
-    loggerError('Type not existing');
+  // Handle 'init' command independently (before config exists)
+  if (cmd === 'init') {
+    await startInitApp();
+    const diff = process.hrtime(start);
+    logger(`Execution completed in ${diff[0]}s ${(diff[1] / 1e6).toFixed(2)}ms.`);
     return;
   }
 
-  if (!['commonjs', 'module', 'json'].includes(configJson?.type)) {
-    loggerError('Type must be commonjs, module, json not existing');
-    return;
+  // Resolve configuration path
+  const configFilePath = resolveConfigPath(getValueOfCommand(constant.COMMAND.CONFIG_FILE_PATH));
+
+  // Load and parse configuration
+  const configJson = readJsonFile(configFilePath) as IConfig;
+  if (!configJson) {
+    loggerError(`Could not find or parse configuration file at "${configFilePath}". Run "lee-tr init" to create one.`);
+    process.exit(1);
   }
 
-  // Locale path
-  if (!configJson?.localePath) {
-    loggerError("Configuration { localePath: '' } not existing");
-    return;
+  // Setup process termination hooks
+  setupLifecycleHooks(configFilePath);
+
+  // Validate configuration schema and files
+  const isValid = await validateConfig(configJson);
+  if (!isValid) {
+    process.exit(1);
   }
 
-  // Locals list
-  if (!configJson?.locales || (Array.isArray(configJson?.locales) && !configJson?.locales?.length)) {
-    loggerError("Configuration { locales: '' } not existing");
-    return;
-  }
-
-  // Checking lang key
-  for (const local of configJson.locales) {
-    if (!LANGUAGE_CODES.map((d) => d.toLocaleLowerCase()).includes(local.lang.toLocaleLowerCase() as LanguageCode)) {
-      loggerError(`lang: "${local.lang}" is not exiting. check more on docs.`);
-      process.exit(0);
-    }
-  }
-
-  // check local path existing
-  for (const locale of configJson.locales) {
-    const errorMessage = `${locale?.file} not existing`;
-    try {
-      const existing = await isFileExisting(path.join(configJson?.localePath, locale?.file));
-      if (!existing) {
-        loggerError(errorMessage);
-        process.exit(0);
-      }
-      if (
-        !(
-          (configJson?.type == 'json' && locale?.file?.includes('.json')) ||
-          (configJson?.type == 'commonjs' && locale?.file?.includes('.js')) ||
-          (configJson?.type == 'module' && locale?.file?.includes('.ts'))
-        )
-      ) {
-        loggerError(`Config type and file not match format. check docs more details`);
-        process.exit(0);
-      }
-    } catch {
-      loggerError(errorMessage);
-      process.exit(0);
-    }
-  }
-
-  // Command switch case
+  // Dispatch command
   switch (cmd) {
     case 't':
       await startTApp(configJson);
       break;
     case 'add':
-      await startAddApp(configJson, filePath);
+      await startAddApp(configJson, configFilePath);
       break;
     case 'check':
       await startCheckApp(configJson);
       break;
-    default:
-      loggerError('Command not existing. please try --help for more detail');
+    case 'sync':
+      await startSyncApp(configJson);
       break;
+    default:
+      loggerError(`Unknown command "${cmd ?? ''}". Available commands: t, add, check, sync, init.`);
+      process.exit(1);
   }
 
-  // Console request time
+  // Log execution duration
   const diff = process.hrtime(start);
-  logger(`Execution time: ${diff[0]}s ${diff[1] / 1e6}ms`);
+  const seconds = diff[0];
+  const milliseconds = (diff[1] / 1e6).toFixed(2);
+  logger(`Execution completed in ${seconds}s ${milliseconds}ms.`);
 }
 
 bootstrap();
-unMounted();

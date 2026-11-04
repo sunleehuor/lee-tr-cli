@@ -1,1 +1,2 @@
-module.exports = {}
+const defaultCommon = {};
+export default defaultCommon;
