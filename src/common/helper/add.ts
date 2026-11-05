@@ -1,4 +1,4 @@
-type FlatItem = {
+export type FlatItem = {
   path: string[];
   value: string;
 };
@@ -30,7 +30,7 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
-export function setValue(obj: Record<string, any>, path: string[], value: any) {
+export function setValue(obj: Record<string, any>, path: string[], value: any): void {
   let current = obj;
 
   for (let i = 0; i < path.length - 1; i++) {
@@ -39,6 +39,17 @@ export function setValue(obj: Record<string, any>, path: string[], value: any) {
   }
 
   current[path[path.length - 1]] = value;
+}
+
+export function getValueByPath(obj: Record<string, any>, path: string[]): any {
+  let current = obj;
+  for (const key of path) {
+    if (current == null || typeof current !== 'object') {
+      return undefined;
+    }
+    current = current[key];
+  }
+  return current;
 }
 
 export function unFlattenObject(flat: FlatItem[][]): Record<string, any> {
