@@ -37,5 +37,8 @@
   "dependencies": {
     "bing-translate-api": "^4.2.0",
     "clipboardy": "^5.0.2"
+  },
+  "overrides": {
+    "is-unicode-supported": "npm:@socketregistry/is-unicode-supported@1.0.5"
   }
 }

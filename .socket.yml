@@ -1,0 +1,18 @@
+version: 2
+projectIgnorePaths:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/docs/**'
+  - '**/tasks/**'
+issueRules:
+  networkAccess: true
+  shellAccess: true
+packageRules:
+  # Legitimate network access required for online translation requests
+  - pkg: 'bing-translate-api'
+    issueRules:
+      networkAccess: false
+  # Legitimate shell access required for interacting with OS clipboard
+  - pkg: 'clipboardy'
+    issueRules:
+      shellAccess: false
